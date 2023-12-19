@@ -1,6 +1,7 @@
 Config = {
     MinimumSpeedForStalling = 20,
-    StallingDuration = 300, -- in seconds
+    StallingDuration = 5, -- in seconds
     DizzyEffectDuration = 10, -- in seconds
-    CollisionSpeedThreshold = 5 -- Adjust as needed
+    MinHealthDifference = 5,
+    DizzyEffectIntensity = 2,
 }
