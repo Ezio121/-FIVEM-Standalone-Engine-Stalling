@@ -1,75 +1,129 @@
+-- engine_stalling.lua
+
 local engineStalled = false
+local lastVehicleHealth = 0
+local dizzyEffectActive = false
+local dizzyEffectTimer = 0
+
+-- Function to clear screen effects
+function ClearScreenEffects()
+    ClearTimecycleModifier()
+    StopGameplayCamShaking(true)
+end
 
 RegisterNetEvent("carEngineStalling:checkStalling")
-AddEventHandler("carEngineStalling:checkStalling", function()
-    local vehicle = GetVehiclePedIsIn(GetPlayerPed(-1), false)
-
+AddEventHandler("carEngineStalling:checkStalling", function(vehicle)
     if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
-        local speed = GetEntitySpeed(vehicle) * 2.23694 -- Convert m/s to mph
+        local currentHealth = GetVehicleBodyHealth(vehicle)
+        local healthDifference = lastVehicleHealth - currentHealth
 
-        if speed >= Config.MinimumSpeedForStalling then
-            engineStalled = true
-
-            -- Trigger an event to handle engine stalling and dizzy effect
-            TriggerEvent("carEngineStalling:stallEngineAndDizzy")
+        if healthDifference > Config.MinHealthDifference then
+            -- Collision detected, trigger the event to check for stalling
+            TriggerEvent("carEngineStalling:stallEngineAndDizzy", vehicle)
         end
+
+        -- Update last vehicle health
+        lastVehicleHealth = currentHealth
     end
 end)
 
 RegisterNetEvent("carEngineStalling:stallEngineAndDizzy")
-AddEventHandler("carEngineStalling:stallEngineAndDizzy", function()
-    local vehicle = GetVehiclePedIsIn(GetPlayerPed(-1), false)
+AddEventHandler("carEngineStalling:stallEngineAndDizzy", function(vehicle)
+    if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
+        -- Stop the vehicle engine
+        SetVehicleEngineOn(vehicle, false, false, true)
 
-    -- Stop the vehicle engine
-    SetVehicleEngineOn(vehicle, false, false, true)
+        -- Trigger a dizzy effect immediately
+        TriggerEvent("carEngineStalling:dizzyEffect")
 
-    -- Trigger a dizzy effect immediately
-    TriggerEvent("carEngineStalling:dizzyEffect")
-
-    -- Trigger a timer to restart the engine after a delay
-    SetTimeout(Config.StallingDuration * 1000, function()
-        if engineStalled then
+        -- Trigger a timer to restart the engine after a delay
+        SetTimeout(Config.StallingDuration * 1000, function()
             -- Restart the vehicle engine
             SetVehicleEngineOn(vehicle, true, false, true)
 
             -- Reset the engine stalling flag
             engineStalled = false
-        end
-    end)
+        end)
+    end
 end)
 
 RegisterNetEvent("carEngineStalling:dizzyEffect")
 AddEventHandler("carEngineStalling:dizzyEffect", function()
-    -- Add your dizzy effect logic here
-    local playerPed = GetPlayerPed(-1)
+    if not dizzyEffectActive then
+        dizzyEffectActive = true
 
-    -- Example: Apply a basic dizzy effect using task sequence
-    TaskStartScenarioInPlace(playerPed, "WORLD_HUMAN_DRUNK_SHAKE", 0, true)
-    
-    -- Trigger a timer to stop the dizzy effect after a duration
-    SetTimeout(Config.DizzyEffectDuration * 1000, function()
-        ClearPedTasks(playerPed)
-    end)
+        -- Add your dizzy effect logic here
+        local playerPed = GetPlayerPed(-1)
+
+        if playerPed then
+            -- Example: Apply a dizzy effect using screen effects
+            SetTimecycleModifier("DRUNK", true)
+            ShakeGameplayCam("DRUNK_SHAKE", Config.DizzyEffectIntensity)  -- Adjust intensity as needed
+
+            -- Set a timer to clear the screen effects after the specified duration
+            dizzyEffectTimer = GetGameTimer() + Config.DizzyEffectDuration * 1000
+        end
+    end
 end)
 
--- Listen for collisions using OnEntityImpact event
+-- Listen for vehicle damage changes when the player enters a vehicle
 Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
 
         local playerPed = GetPlayerPed(-1)
-        if IsEntityInWater(playerPed) then
-            engineStalled = false
-        end
-
-        if IsPedInAnyVehicle(playerPed, false) then
+        if playerPed and IsPedInAnyVehicle(playerPed, false) then
             local vehicle = GetVehiclePedIsIn(playerPed, false)
+            
+            if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
+                local currentHealth = GetVehicleBodyHealth(vehicle)
 
-            local collision, _, _ = GetEntitySpeedVector(vehicle, true)
-            if collision > Config.CollisionSpeedThreshold then
-                -- Collision detected, trigger the event to check for stalling
-                TriggerEvent("carEngineStalling:checkStalling")
+                -- Initialize last vehicle health if it's the first time
+                if lastVehicleHealth == 0 then
+                    lastVehicleHealth = currentHealth
+                end
             end
+        end
+    end
+end)
+
+-- Listen for vehicle damage changes
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(0)
+
+        local playerPed = GetPlayerPed(-1)
+        if playerPed and IsPedInAnyVehicle(playerPed, false) then
+            local vehicle = GetVehiclePedIsIn(playerPed, false)
+            
+            if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
+                local currentHealth = GetVehicleBodyHealth(vehicle)
+                local healthDifference = lastVehicleHealth - currentHealth
+
+                if healthDifference > Config.MinHealthDifference then
+                    -- Collision detected, trigger the event to check for stalling
+                    TriggerEvent("carEngineStalling:checkStalling", vehicle)
+                end
+
+                -- Update last vehicle health
+                lastVehicleHealth = currentHealth
+            end
+        end
+    end
+end)
+
+-- Continuous check for clearing the screen effects after the dizzy effect duration
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(1000)  -- Check every second
+
+        if dizzyEffectActive and GetGameTimer() > dizzyEffectTimer then
+            -- Clear the screen effects after the specified duration
+            ClearScreenEffects()
+
+            -- Reset flags and timer
+            dizzyEffectActive = false
+            dizzyEffectTimer = 0
         end
     end
 end)
