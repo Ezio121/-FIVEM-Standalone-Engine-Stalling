@@ -17,6 +17,7 @@ AddEventHandler("carEngineStalling:checkStalling", function(vehicle)
         local currentHealth = GetVehicleBodyHealth(vehicle)
         local healthDifference = lastVehicleHealth - currentHealth
 
+        
         if healthDifference > Config.MinHealthDifference then
             -- Collision detected, trigger the event to check for stalling
             TriggerEvent("carEngineStalling:stallEngineAndDizzy", vehicle)
@@ -35,7 +36,8 @@ AddEventHandler("carEngineStalling:stallEngineAndDizzy", function(vehicle)
 
         -- Trigger a dizzy effect immediately
         TriggerEvent("carEngineStalling:dizzyEffect")
-
+        -- Trigger the exported function from ps-dispatch
+        
         -- Trigger a timer to restart the engine after a delay
         SetTimeout(Config.StallingDuration * 1000, function()
             -- Restart the vehicle engine
@@ -99,8 +101,9 @@ Citizen.CreateThread(function()
             if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
                 local currentHealth = GetVehicleBodyHealth(vehicle)
                 local healthDifference = lastVehicleHealth - currentHealth
+                local speed = GetEntitySpeed(vehicle) * 2.236936
 
-                if healthDifference > Config.MinHealthDifference then
+                if healthDifference > Config.MinHealthDifference and speed > Config.MinimumSpeedForStalling  then
                     -- Collision detected, trigger the event to check for stalling
                     TriggerEvent("carEngineStalling:checkStalling", vehicle)
                 end
