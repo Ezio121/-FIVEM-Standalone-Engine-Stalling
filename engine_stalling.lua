@@ -33,7 +33,7 @@ AddEventHandler("carEngineStalling:stallEngineAndDizzy", function(vehicle)
     if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
         -- Stop the vehicle engine
         SetVehicleEngineOn(vehicle, false, false, true)
-
+        TriggerEvent('ps-dispatch:VehicleAccident')
         -- Trigger a dizzy effect immediately
         TriggerEvent("carEngineStalling:dizzyEffect")
         -- Trigger the exported function from ps-dispatch
@@ -55,7 +55,7 @@ AddEventHandler("carEngineStalling:dizzyEffect", function()
         dizzyEffectActive = true
 
         -- Add your dizzy effect logic here
-        local playerPed = GetPlayerPed(-1)
+        local playerPed = PlayerPedId()
 
         if playerPed then
             -- Example: Apply a dizzy effect using screen effects
@@ -73,7 +73,7 @@ Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
 
-        local playerPed = GetPlayerPed(-1)
+        local playerPed = PlayerPedId()
         if playerPed and IsPedInAnyVehicle(playerPed, false) then
             local vehicle = GetVehiclePedIsIn(playerPed, false)
             
@@ -94,7 +94,7 @@ Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
 
-        local playerPed = GetPlayerPed(-1)
+        local playerPed = PlayerPedId()
         if playerPed and IsPedInAnyVehicle(playerPed, false) then
             local vehicle = GetVehiclePedIsIn(playerPed, false)
             
