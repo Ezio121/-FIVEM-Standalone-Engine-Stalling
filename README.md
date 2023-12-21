@@ -34,9 +34,8 @@ Integration
     }
 
     TriggerServerEvent('ps-dispatch:server:notify', dispatchData)
-```
-end
-exports('VehicleAccident', VehicleAccident)
+   end
+   exports('VehicleAccident', VehicleAccident)
 
 and then add "  "accident": "Vehicle Collision Occured",  " to the locale file you are using
 then add the script to the resources folder and ensure it in the server.cfg or start it via the server console and it should work.
